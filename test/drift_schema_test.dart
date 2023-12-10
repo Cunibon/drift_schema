@@ -4,7 +4,7 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:drift_schema/custom_db.dart';
 import 'package:drift_schema/custom_table.dart';
-import 'package:drift_schema/parse_schema.dart';
+import 'package:drift_schema/schema_db_creator.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -50,9 +50,9 @@ void main() {
       "test2": test2Data,
     };
 
-    final dbCreator = SchemaDbCreator();
+    final dbCreator = SchemaDbCreator(jsonLookup);
 
-    final db = await dbCreator.schemaBasedDb(jsonLookup);
+    final db = await dbCreator.init();
 
     expect(db.allTables.length, 2);
     expect(db.allTables.first.$columns.length, 3);

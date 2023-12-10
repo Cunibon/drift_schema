@@ -1,0 +1,78 @@
+{
+    "type": "object",
+    "properties": {
+        "stringProperty": {
+            "type": "string"
+        },
+        "numberProperty": {
+            "type": "number"
+        },
+        "booleanProperty": {
+            "type": "boolean"
+        },
+        "arrayProperty": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "objectProperty": {
+            "type": "object",
+            "properties": {
+                "nestedString": {
+                    "type": "string"
+                },
+                "nestedNumber": {
+                    "type": "number"
+                }
+            },
+            "required": [
+                "nestedString",
+                "nestedNumber"
+            ],
+            "additionalProperties": false
+        },
+        "nullProperty": {
+            "type": "null"
+        },
+        "anyOfProperty": {
+            "anyOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "number"
+                }
+            ]
+        },
+        "allOfProperty": {
+            "allOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "minLength": 3
+                }
+            ]
+        },
+        "enumProperty": {
+            "type": "string",
+            "enum": [
+                "value1",
+                "value2",
+                "value3"
+            ]
+        },
+        "requiredProperty": {
+            "type": "string"
+        },
+        "defaultProperty": {
+            "type": "string",
+            "default": "defaultValue"
+        }
+    },
+    "required": [
+        "requiredProperty"
+    ],
+    "additionalProperties": false
+}

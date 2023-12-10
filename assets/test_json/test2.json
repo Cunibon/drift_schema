@@ -1,16 +1,14 @@
 {
-    "schema": {
-        "type": "object",
-        "properties": {
-            "string2": {
-                "type": "string"
-            },
-            "number2": {
-                "type": "number"
-            },
-            "dateTime": {
-                "type": "date-time"
-            }
+    "type": "object",
+    "properties": {
+        "string2": {
+            "type": "string"
+        },
+        "number2": {
+            "type": "number"
+        },
+        "dateTime": {
+            "type": "date-time"
         }
     }
 }

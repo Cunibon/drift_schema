@@ -1,17 +1,15 @@
 {
-    "schema": {
-        "type": "object",
-        "properties": {
-            "string": {
-                "type": "string"
-            },
-            "number": {
-                "type": "number"
-            },
-            "reference": {
-                "$ref": "test2",
-                "type": "string"
-            }
+    "type": "object",
+    "properties": {
+        "string": {
+            "type": "string"
+        },
+        "number": {
+            "type": "number"
+        },
+        "reference": {
+            "$ref": "test2",
+            "type": "string"
         }
     }
 }
