@@ -78,5 +78,12 @@ void main() {
     queriedFeature["reference"].remove("id");
 
     expect(queriedFeature, feature);
+
+    final bigQuery = await schemaDb.db
+        .customSelect(
+            "Select * from ${jsonLookup.keys.first} o left join ${jsonLookup.keys.last} t on o.reference = t.id")
+        .get();
+
+    expect(bigQuery.first.data.length, 10);
   });
 }

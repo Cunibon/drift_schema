@@ -111,31 +111,22 @@ class SchemaTable {
     required CustomDb db,
   }) async {
     for (final entry in references.entries) {
-      final key = entry.key;
-      final value = entry.value;
-
-      final refData = featureData[key];
+      final refData = featureData[entry.key];
       if (refData != null) {
-        final rowId = await schemaTables[value]!.insertData(
+        final rowId = await schemaTables[entry.value]!.insertData(
           featureData: refData,
           db: db,
         );
 
-        featureData[key] = rowId;
+        featureData[entry.key] = rowId;
       }
-    }
-
-    final List<Variable> variables = [];
-
-    for (var element in featureData.values) {
-      variables.add(Variable(element));
     }
 
     return db.customInsert(
       insertQuery,
       variables: [
         const Variable(1),
-        ...variables,
+        ...featureData.values.map((e) => Variable(e)),
       ],
     );
   }
@@ -151,17 +142,14 @@ class SchemaTable {
         .data;
 
     for (final entry in references.entries) {
-      final key = entry.key;
-      final value = entry.value;
-
-      final refIndex = featureData[key];
+      final refIndex = featureData[entry.key];
       if (refIndex != null) {
-        final refData = await schemaTables[value]!.queryDataForIndex(
+        final refData = await schemaTables[entry.value]!.queryDataForIndex(
           rowIndex: refIndex,
           db: db,
         );
 
-        featureData[key] = refData;
+        featureData[entry.key] = refData;
       }
     }
 
