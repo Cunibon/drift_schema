@@ -10,6 +10,9 @@ class CustomTable extends Table with TableInfo {
   final String actualTableName;
 
   @override
+  Set<GeneratedColumn> get $primaryKey => {$columns.first};
+
+  @override
   late final GeneratedDatabase attachedDatabase;
 
   CustomTable(

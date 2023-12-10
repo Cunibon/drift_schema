@@ -8,38 +8,31 @@ class SchemaDb {
   SchemaDb(this.schemas);
 
   final Map<String, dynamic> schemas;
-  Map<String, SchemaTable> schemaTables = {};
-  Map<String, CustomTable> driftTables = {};
+  final Map<String, SchemaTable> schemaTables = {};
 
   late CustomDb db;
+  late Migrator migrator;
 
   Future<CustomDb> init() async {
+    final List<CustomTable> driftTables = [];
     schemas.forEach((key, value) {
-      schemaTables[key] = SchemaTable(
+      final schemaTable = SchemaTable(
         tableName: key,
         schema: value,
-        schemaTables: schemaTables,
+        schemaDb: this,
       );
+      schemaTables[key] = schemaTable;
+      driftTables.add(schemaTable.driftTable);
     });
-
-    driftTables = schemaTables.map(
-      (key, schemaTable) => MapEntry(
-        key,
-        CustomTable(
-          schemaTable.columns,
-          null,
-          schemaTable.tableName,
-        ),
-      ),
-    );
 
     db = CustomDb(
       NativeDatabase.memory(logStatements: true),
-      driftTables.values.toList(),
+      driftTables,
     );
-    final migrator = Migrator(db);
 
-    for (final table in driftTables.values) {
+    migrator = Migrator(db);
+
+    for (final table in driftTables) {
       table.attachedDatabase = db;
       await migrator.createTable(table);
     }
@@ -53,17 +46,15 @@ class SchemaDb {
   }) async {
     return schemaTables[schemaName]!.insertData(
       featureData: featureData,
-      db: db,
     );
   }
 
-  Future<Map<String, dynamic>> queryDataForIndex({
+  Future<Map<String, dynamic>?> queryDataForIndex({
     required int rowIndex,
     required String schemaName,
   }) async {
     return schemaTables[schemaName]!.queryDataForIndex(
       rowIndex: rowIndex,
-      db: db,
     );
   }
 }

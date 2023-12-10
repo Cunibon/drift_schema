@@ -84,7 +84,7 @@ void main() {
       schemaName: "test1",
     );
 
-    queriedFeature.remove("id");
+    queriedFeature!.remove("id");
     queriedFeature["reference"].remove("id");
 
     expect(queriedFeature, feature);
