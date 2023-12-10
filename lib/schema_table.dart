@@ -59,12 +59,12 @@ class SchemaTable {
       final allOf = value["allOf"] as List<dynamic>?;
 
       if (allOf != null) {
-        for (final element in allOf) {
+        for (int i = 0; i < allOf.length; i++) {
           tables.add(
             SchemaTable(
-              tableName: "$tableName $key",
+              tableName: "$tableName $key[$i]",
               tables: tables,
-              data: element,
+              data: allOf[i],
             )..init(),
           );
         }

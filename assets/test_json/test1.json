@@ -10,6 +10,23 @@
         "reference": {
             "$ref": "test2",
             "type": "string"
+        },
+        "allOfProperty": {
+            "allOf": [
+                {
+                    "string": {
+                        "type": "string"
+                    }
+                },
+                {
+                    "string": {
+                        "type": "string"
+                    },
+                    "number": {
+                        "type": "number"
+                    }
+                }
+            ]
         }
     }
 }

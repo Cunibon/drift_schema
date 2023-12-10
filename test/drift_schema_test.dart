@@ -54,8 +54,10 @@ void main() {
 
     final db = await dbCreator.init();
 
-    expect(db.allTables.length, 2);
-    expect(db.allTables.first.$columns.length, 3);
-    expect(db.allTables.last.$columns.length, 3);
+    expect(db.allTables.length, 4);
+    expect(db.allTables[0].$columns.length, 2);
+    expect(db.allTables[1].$columns.length, 3);
+    expect(db.allTables[2].$columns.length, 4);
+    expect(db.allTables[3].$columns.length, 4);
   });
 }
