@@ -11,22 +11,20 @@
             "$ref": "test2",
             "type": "string"
         },
-        "allOfProperty": {
-            "allOf": [
-                {
-                    "string": {
-                        "type": "string"
-                    }
-                },
-                {
-                    "string": {
-                        "type": "string"
-                    },
-                    "number": {
-                        "type": "number"
-                    }
+        "allOf": [
+            {
+                "allOfString1": {
+                    "type": "string"
                 }
-            ]
-        }
+            },
+            {
+                "allOfString2": {
+                    "type": "string"
+                },
+                "allOfNumber": {
+                    "type": "number"
+                }
+            }
+        ]
     }
 }

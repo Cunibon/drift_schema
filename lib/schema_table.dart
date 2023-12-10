@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:drift_schema/custom_db.dart';
 
 final Map<String, DriftSqlType> _typeLookup = {
   "boolean": DriftSqlType.bool,
@@ -11,9 +12,9 @@ final Map<String, DriftSqlType> _typeLookup = {
 
 class SchemaTable {
   SchemaTable({
-    required this.tables,
     required this.tableName,
-    required this.data,
+    required this.schemaTables,
+    required Map<String, dynamic> schema,
   }) : columns = [
           GeneratedColumn(
             "id",
@@ -22,25 +23,44 @@ class SchemaTable {
             type: DriftSqlType.int,
             hasAutoIncrement: true,
           ),
-        ];
+        ] {
+    build(schema);
 
-  final List<SchemaTable> tables;
+    String columnNames = "";
+    String insertPlaceholder = "";
+
+    for (int i = 0; i < columns.length; i++) {
+      columnNames += columns[i].name;
+      insertPlaceholder += "?${i + 1}";
+
+      if (i != columns.length - 1) {
+        columnNames += ", ";
+        insertPlaceholder += ", ";
+      }
+    }
+
+    insertQuery =
+        'INSERT INTO $tableName ($columnNames) VALUES ($insertPlaceholder)';
+  }
 
   final String tableName;
-  final Map<String, dynamic> data;
   final List<GeneratedColumn> columns;
+  final Map<String, SchemaTable> schemaTables;
 
-  void init() {
+  String insertQuery = "";
+  final Map<String, String> references = {};
+
+  void build(Map<String, dynamic> data) {
     if (data["properties"] != null) {
-      schemaBasedColumns(data);
+      schemaBasedColumns(schema: data);
     } else {
       propertiesBasedColumns(properties: data);
     }
   }
 
-  void schemaBasedColumns(
-    Map<String, dynamic> schema,
-  ) {
+  void schemaBasedColumns({
+    required Map<String, dynamic> schema,
+  }) {
     final properties = schema["properties"] as Map<String, dynamic>;
     final requiredProperties = schema["required"] as List<dynamic>?;
 
@@ -55,28 +75,28 @@ class SchemaTable {
     List<dynamic>? requiredProperties,
   }) {
     properties.forEach((key, value) {
-      final ref = value["\$ref"];
-      final allOf = value["allOf"] as List<dynamic>?;
+      final allOf = key == "allOf" ? value as List<dynamic>? : null;
 
       if (allOf != null) {
+        //TODO: This implementation is flawed as it disregards the schema level
         for (int i = 0; i < allOf.length; i++) {
-          tables.add(
-            SchemaTable(
-              tableName: "$tableName $key[$i]",
-              tables: tables,
-              data: allOf[i],
-            )..init(),
-          );
+          build(allOf[i]);
         }
       } else {
+        final ref = value["\$ref"];
+
+        final type =
+            ref != null ? DriftSqlType.int : _typeLookup[value["type"]]!;
+
         columns.add(
           GeneratedColumn(
             key,
             tableName,
             !(requiredProperties?.contains(key) ?? false),
-            type: _typeLookup[value["type"]]!,
+            type: type,
             defaultConstraints: (genContext) {
               if (ref != null) {
+                references[key] = ref;
                 genContext.buffer.write(' REFERENCES $ref(id)');
               }
             },
@@ -84,5 +104,67 @@ class SchemaTable {
         );
       }
     });
+  }
+
+  Future<int> insertData({
+    required Map<String, dynamic> featureData,
+    required CustomDb db,
+  }) async {
+    for (final entry in references.entries) {
+      final key = entry.key;
+      final value = entry.value;
+
+      final refData = featureData[key];
+      if (refData != null) {
+        final rowId = await schemaTables[value]!.insertData(
+          featureData: refData,
+          db: db,
+        );
+
+        featureData[key] = rowId;
+      }
+    }
+
+    final List<Variable> variables = [];
+
+    for (var element in featureData.values) {
+      variables.add(Variable(element));
+    }
+
+    return db.customInsert(
+      insertQuery,
+      variables: [
+        const Variable(1),
+        ...variables,
+      ],
+    );
+  }
+
+  Future<Map<String, dynamic>> queryDataForIndex({
+    required int rowIndex,
+    required CustomDb db,
+  }) async {
+    final featureData = (await db
+            .customSelect("Select * from $tableName where id = $rowIndex")
+            .get())
+        .first
+        .data;
+
+    for (final entry in references.entries) {
+      final key = entry.key;
+      final value = entry.value;
+
+      final refIndex = featureData[key];
+      if (refIndex != null) {
+        final refData = await schemaTables[value]!.queryDataForIndex(
+          rowIndex: refIndex,
+          db: db,
+        );
+
+        featureData[key] = refData;
+      }
+    }
+
+    return featureData;
   }
 }

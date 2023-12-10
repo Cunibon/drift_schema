@@ -1,0 +1,12 @@
+{
+    "string": "Hello, World!",
+    "number": 42,
+    "reference": {
+        "string2": "Another string value",
+        "number2": 123,
+        "dateTime": "2023-12-10T08:30:00Z"
+    },
+    "allOfString1": "This is a string",
+    "allOfString2": "Another string",
+    "allOfNumber": 3.14
+}

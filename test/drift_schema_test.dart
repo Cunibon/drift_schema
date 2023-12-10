@@ -4,7 +4,7 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:drift_schema/custom_db.dart';
 import 'package:drift_schema/custom_table.dart';
-import 'package:drift_schema/schema_db_creator.dart';
+import 'package:drift_schema/schema_db.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -50,14 +50,33 @@ void main() {
       "test2": test2Data,
     };
 
-    final dbCreator = SchemaDbCreator(jsonLookup);
+    final schemaDb = SchemaDb(jsonLookup);
 
-    final db = await dbCreator.init();
+    await schemaDb.init();
 
-    expect(db.allTables.length, 4);
-    expect(db.allTables[0].$columns.length, 2);
-    expect(db.allTables[1].$columns.length, 3);
-    expect(db.allTables[2].$columns.length, 4);
-    expect(db.allTables[3].$columns.length, 4);
+    expect(schemaDb.db.allTables.length, 2);
+    expect(schemaDb.db.allTables[0].$columns.length, 7);
+    expect(schemaDb.db.allTables[1].$columns.length, 4);
+
+    final String featureString = await rootBundle.loadString(
+      'assets/test_json/feature.json',
+    );
+
+    final feature = jsonDecode(featureString) as Map<String, dynamic>;
+
+    final index = await schemaDb.insertData(
+      featureData: Map.fromEntries(feature.entries),
+      schemaName: jsonLookup.keys.first,
+    );
+
+    final queriedFeature = await schemaDb.queryDataForIndex(
+      rowIndex: index,
+      schemaName: jsonLookup.keys.first,
+    );
+
+    queriedFeature.remove("id");
+    queriedFeature["reference"].remove("id");
+
+    expect(queriedFeature, feature);
   });
 }
