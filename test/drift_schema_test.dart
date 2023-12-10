@@ -32,7 +32,7 @@ void main() {
     await migrator.createTable(table);
   });
 
-  test('Test custom DB creation based on schema', () async {
+  Future<SchemaDb> setUpTestDb() async {
     WidgetsFlutterBinding.ensureInitialized();
 
     final String test1String = await rootBundle.loadString(
@@ -54,9 +54,19 @@ void main() {
 
     await schemaDb.init();
 
+    return schemaDb;
+  }
+
+  test('Test custom DB creation based on schema', () async {
+    final schemaDb = await setUpTestDb();
+
     expect(schemaDb.db.allTables.length, 2);
     expect(schemaDb.db.allTables[0].$columns.length, 7);
     expect(schemaDb.db.allTables[1].$columns.length, 4);
+  });
+
+  test('Test insert and query data from SchemaDB', () async {
+    final schemaDb = await setUpTestDb();
 
     final String featureString = await rootBundle.loadString(
       'assets/test_json/feature.json',
@@ -66,12 +76,12 @@ void main() {
 
     final index = await schemaDb.insertData(
       featureData: Map.fromEntries(feature.entries),
-      schemaName: jsonLookup.keys.first,
+      schemaName: "test1",
     );
 
     final queriedFeature = await schemaDb.queryDataForIndex(
       rowIndex: index,
-      schemaName: jsonLookup.keys.first,
+      schemaName: "test1",
     );
 
     queriedFeature.remove("id");
@@ -81,7 +91,7 @@ void main() {
 
     final bigQuery = await schemaDb.db
         .customSelect(
-            "Select * from ${jsonLookup.keys.first} o left join ${jsonLookup.keys.last} t on o.reference = t.id")
+            "Select * from test1 o left join test2 t on o.reference = t.id")
         .get();
 
     expect(bigQuery.first.data.length, 10);
