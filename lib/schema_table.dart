@@ -2,7 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:drift_schema/custom_table.dart';
 import 'package:drift_schema/schema_db.dart';
 
-final Map<String, DriftSqlType> _typeLookup = {
+const Map<String, DriftSqlType> _typeLookup = {
   "boolean": DriftSqlType.bool,
   "integer": DriftSqlType.int,
   "number": DriftSqlType.double,
@@ -11,6 +11,8 @@ final Map<String, DriftSqlType> _typeLookup = {
   "blob": DriftSqlType.blob,
 };
 
+const String schemaDataId = "_schemaDataId";
+
 class SchemaTable {
   SchemaTable({
     required this.tableName,
@@ -18,7 +20,7 @@ class SchemaTable {
     required Map<String, dynamic> schema,
   }) : columns = [
           GeneratedColumn(
-            "id",
+            schemaDataId,
             tableName,
             true,
             type: DriftSqlType.int,
@@ -43,9 +45,9 @@ class SchemaTable {
         'INSERT INTO $tableName ($columnNames) VALUES ($insertPlaceholder)';
 
     driftTable = CustomTable(
-      columns,
-      null,
-      tableName,
+      $columns: columns,
+      actualTableName: tableName,
+      overridePrimaryKey: {columns.first},
     );
   }
 
@@ -148,21 +150,28 @@ class SchemaTable {
   ///Returns the expanded data for the feature at index
   Future<Map<String, dynamic>?> queryDataForIndex({
     required int rowIndex,
+    bool removeSchemaTableId = true,
   }) async {
     final featureData = (await schemaDb.db
-        .customSelect("Select * from $tableName where id = $rowIndex")
+        .customSelect(
+          "Select * from $tableName where $schemaDataId = $rowIndex",
+        )
         .get());
 
     if (featureData.isEmpty) {
       return null;
     }
 
-    return expandData(featureData: featureData.first.data);
+    return expandData(
+      featureData: featureData.first.data,
+      removeSchemaTableId: removeSchemaTableId,
+    );
   }
 
   ///Returns the feature with all its references filled in with the corresponding data
   Future<Map<String, dynamic>> expandData({
     required Map<String, dynamic> featureData,
+    bool removeSchemaTableId = true,
   }) async {
     for (final entry in references.entries) {
       final refIndex = featureData[entry.key];
@@ -174,6 +183,10 @@ class SchemaTable {
 
         featureData[entry.key] = refData;
       }
+    }
+
+    if (removeSchemaTableId) {
+      featureData.remove(schemaDataId);
     }
 
     return featureData;

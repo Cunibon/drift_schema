@@ -1,37 +1,12 @@
 import 'dart:convert';
 
-import 'package:drift/drift.dart';
-import 'package:drift/native.dart';
-import 'package:drift_schema/custom_db.dart';
-import 'package:drift_schema/custom_table.dart';
 import 'package:drift_schema/schema_db.dart';
+import 'package:drift_schema/schema_table.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('Test custom Db creation', () async {
-    final table = CustomTable(
-      [
-        GeneratedColumn(
-          'id',
-          'foo',
-          false,
-          type: DriftSqlType.int,
-          hasAutoIncrement: true,
-        ),
-      ],
-      null,
-      'foo',
-    );
-
-    final db = CustomDb(NativeDatabase.memory(logStatements: true), [table]);
-    table.attachedDatabase = db;
-
-    final migrator = Migrator(db);
-    await migrator.createTable(table);
-  });
-
   Future<SchemaDb> setUpTestDb() async {
     WidgetsFlutterBinding.ensureInitialized();
 
@@ -84,14 +59,12 @@ void main() {
       schemaName: "test1",
     );
 
-    queriedFeature!.remove("id");
-    queriedFeature["reference"].remove("id");
-
     expect(queriedFeature, feature);
 
     final bigQuery = await schemaDb.db
         .customSelect(
-            "Select * from test1 o left join test2 t on o.reference = t.id")
+          "Select * from test1 o left join test2 t on o.reference = t.$schemaDataId",
+        )
         .get();
 
     expect(bigQuery.first.data.length, 10);
