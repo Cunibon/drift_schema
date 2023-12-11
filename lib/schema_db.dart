@@ -9,20 +9,27 @@ class SchemaDb {
 
   final Map<String, dynamic> schemas;
   final Map<String, SchemaTable> schemaTables = {};
+  final List<CustomTable> driftTables = [];
 
   late CustomDb db;
   late Migrator migrator;
 
+  void addSchemaTable(SchemaTable schemaTable, String tableName) {
+    schemaTables[tableName] = schemaTable;
+    driftTables.add(schemaTable.driftTable);
+  }
+
   Future<CustomDb> init() async {
-    final List<CustomTable> driftTables = [];
     schemas.forEach((key, value) {
       final schemaTable = SchemaTable(
         tableName: key,
         schema: value,
         schemaDb: this,
       );
-      schemaTables[key] = schemaTable;
-      driftTables.add(schemaTable.driftTable);
+      addSchemaTable(
+        schemaTable,
+        key,
+      );
     });
 
     db = CustomDb(

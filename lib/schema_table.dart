@@ -93,14 +93,30 @@ class SchemaTable {
           build(allOf[i]);
         }
       } else {
-        final ref = value["\$ref"];
-        late DriftSqlType type;
+        String? ref = value["\$ref"];
+        final type = value["type"];
+        late DriftSqlType sqlType;
+
+        if (type == "array") {
+          final arrayTableName = "$tableName-$type";
+          ref = arrayTableName;
+
+          final schemaTable = SchemaTable(
+            tableName: arrayTableName,
+            schema: value["items"],
+            schemaDb: schemaDb,
+          );
+          schemaDb.addSchemaTable(
+            schemaTable,
+            arrayTableName,
+          );
+        }
 
         if (ref != null) {
           references[key] = ref;
-          type = DriftSqlType.int;
+          sqlType = DriftSqlType.int;
         } else {
-          type = _typeLookup[value["type"]]!;
+          sqlType = _typeLookup[type]!;
         }
 
         columns.add(
@@ -108,7 +124,7 @@ class SchemaTable {
             key,
             tableName,
             !(requiredProperties?.contains(key) == true),
-            type: type,
+            type: sqlType,
             defaultConstraints: (genContext) {
               if (ref != null) {
                 genContext.buffer.write(' REFERENCES $ref(id)');

@@ -11,6 +11,12 @@
             "$ref": "test2",
             "type": "string"
         },
+        "arrayProperty": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
         "allOf": [
             {
                 "allOfString1": {
