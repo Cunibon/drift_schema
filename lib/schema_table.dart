@@ -29,21 +29,18 @@ class SchemaTable {
         ] {
     build(schema);
 
-    String columnNames = "";
-    String insertPlaceholder = "";
+    queryColumnNames = "";
+    queryInsertPlaceholder = "";
 
     for (int i = 0; i < columns.length; i++) {
-      columnNames += columns[i].name;
-      insertPlaceholder += "?${i + 1}";
+      queryColumnNames += columns[i].name;
+      queryInsertPlaceholder += "?${i + 1}";
 
       if (i != columns.length - 1) {
-        columnNames += ", ";
-        insertPlaceholder += ", ";
+        queryColumnNames += ", ";
+        queryInsertPlaceholder += ", ";
       }
     }
-
-    insertQuery =
-        'INSERT INTO $tableName ($columnNames) VALUES ($insertPlaceholder)';
 
     driftTable = CustomTable(
       $columns: columns,
@@ -58,7 +55,8 @@ class SchemaTable {
 
   late CustomTable driftTable;
 
-  String insertQuery = "";
+  String queryColumnNames = "";
+  String queryInsertPlaceholder = "";
   final Map<String, String> references = {};
   final Map<String, String> arrays = {};
 
@@ -140,34 +138,51 @@ class SchemaTable {
   ///Inserts the given data
   ///References will be inserted to their corresponding table and replaced with the corresponding Id
   ///
-  ///Returns the rowId of the operation
-  Future<int> insertData({
+  ///Returns the rowId of the first effected row
+  Future<List<int?>> insertData({
     required List<Map<String, dynamic>?> featureDatas,
   }) async {
+    final cleanFeatureDatas = featureDatas.nonNulls.toList();
     final List<Map<String, dynamic>?> refData = [];
-    for (final featureData in featureDatas) {
+
+    for (final featureData in cleanFeatureDatas) {
       for (final entry in references.entries) {
-        refData.add(featureData?[entry.key]);
+        refData.add(featureData[entry.key]);
       }
     }
 
     for (final entry in references.entries) {
-      final rowId = await schemaDb.schemaTables[entry.value]!.insertData(
+      final rowIds = await schemaDb.schemaTables[entry.value]!.insertData(
         featureDatas: refData,
       );
 
-      for (int i = 0; i < featureDatas.length; i++) {
-        featureDatas[i]?[entry.key] = rowId + i;
+      for (int i = 0; i < cleanFeatureDatas.length; i++) {
+        if (rowIds[i] != null) {
+          cleanFeatureDatas[i][entry.key] = rowIds[i];
+        }
       }
     }
 
-    return schemaDb.db.customInsert(
-      insertQuery,
+    int rowId = await schemaDb.db.customInsert(
+      'INSERT INTO $tableName ($queryColumnNames) VALUES ($queryInsertPlaceholder)',
       variables: [
-        const Variable(null),
-        ...featureDatas.values.map((e) => Variable(e)),
+        for (final featureData in cleanFeatureDatas) ...[
+          const Variable(null),
+          ...featureData.values.map((e) => Variable(e)),
+        ]
       ],
     );
+
+    return List.generate(featureDatas.length, (index) {
+      int? value;
+
+      if (featureDatas[index] != null) {
+        value = rowId;
+        rowId++;
+      }
+
+      return value;
+    });
   }
 
   ///Returns the expanded data for the feature at index
