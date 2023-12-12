@@ -18,6 +18,7 @@ class SchemaTable {
     required this.tableName,
     required this.schemaDb,
     required Map<String, dynamic> schema,
+    Set<GeneratedColumn>? overridePrimaryKey,
   }) : columns = [
           GeneratedColumn(
             schemaDataId,
@@ -47,7 +48,7 @@ class SchemaTable {
     driftTable = CustomTable(
       $columns: columns,
       actualTableName: tableName,
-      overridePrimaryKey: {columns.first},
+      overridePrimaryKey: overridePrimaryKey ?? {columns.first},
     );
   }
 
@@ -59,6 +60,7 @@ class SchemaTable {
 
   String insertQuery = "";
   final Map<String, String> references = {};
+  final Map<String, String> arrays = {};
 
   void build(Map<String, dynamic> data) {
     if (data["properties"] != null) {
@@ -98,17 +100,16 @@ class SchemaTable {
         late DriftSqlType sqlType;
 
         if (type == "array") {
-          final arrayTableName = "$tableName-$type";
-          ref = arrayTableName;
+          final arrayTableName = "$tableName$type";
+          arrays[key] = arrayTableName;
 
           final schemaTable = SchemaTable(
             tableName: arrayTableName,
-            schema: value["items"],
+            schema: (value as Map<String, dynamic>)..remove("type"),
             schemaDb: schemaDb,
           );
           schemaDb.addSchemaTable(
             schemaTable,
-            arrayTableName,
           );
         }
 
@@ -141,16 +142,22 @@ class SchemaTable {
   ///
   ///Returns the rowId of the operation
   Future<int> insertData({
-    required Map<String, dynamic> featureData,
+    required List<Map<String, dynamic>?> featureDatas,
   }) async {
-    for (final entry in references.entries) {
-      final refData = featureData[entry.key];
-      if (refData != null) {
-        final rowId = await schemaDb.schemaTables[entry.value]!.insertData(
-          featureData: refData,
-        );
+    final List<Map<String, dynamic>?> refData = [];
+    for (final featureData in featureDatas) {
+      for (final entry in references.entries) {
+        refData.add(featureData?[entry.key]);
+      }
+    }
 
-        featureData[entry.key] = rowId;
+    for (final entry in references.entries) {
+      final rowId = await schemaDb.schemaTables[entry.value]!.insertData(
+        featureDatas: refData,
+      );
+
+      for (int i = 0; i < featureDatas.length; i++) {
+        featureDatas[i]?[entry.key] = rowId + i;
       }
     }
 
@@ -158,7 +165,7 @@ class SchemaTable {
       insertQuery,
       variables: [
         const Variable(null),
-        ...featureData.values.map((e) => Variable(e)),
+        ...featureDatas.values.map((e) => Variable(e)),
       ],
     );
   }

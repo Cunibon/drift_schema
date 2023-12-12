@@ -14,8 +14,8 @@ class SchemaDb {
   late CustomDb db;
   late Migrator migrator;
 
-  void addSchemaTable(SchemaTable schemaTable, String tableName) {
-    schemaTables[tableName] = schemaTable;
+  void addSchemaTable(SchemaTable schemaTable) {
+    schemaTables[schemaTable.tableName] = schemaTable;
     driftTables.add(schemaTable.driftTable);
   }
 
@@ -28,7 +28,6 @@ class SchemaDb {
       );
       addSchemaTable(
         schemaTable,
-        key,
       );
     });
 
