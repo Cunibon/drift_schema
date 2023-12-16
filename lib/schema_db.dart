@@ -3,6 +3,8 @@ import 'package:drift/native.dart';
 import 'package:drift_schema/custom_db.dart';
 import 'package:drift_schema/custom_table.dart';
 import 'package:drift_schema/schema_table.dart';
+import 'package:drift_schema/schema_table_insert.dart';
+import 'package:drift_schema/schema_table_query.dart';
 
 class SchemaDb {
   SchemaDb(this.schemas);
