@@ -49,13 +49,13 @@ void main() {
 
     final feature = jsonDecode(featureString) as Map<String, dynamic>;
 
-    final index = await schemaDb.insertData(
-      featureData: Map.fromEntries(feature.entries),
+    final indexs = await schemaDb.insertData(
+      featureDatas: [Map.fromEntries(feature.entries)],
       schemaName: "test1",
     );
 
     final queriedFeature = await schemaDb.queryDataForIndex(
-      rowIndex: index,
+      rowIndex: indexs.firstOrNull!,
       schemaName: "test1",
     );
 
@@ -63,10 +63,10 @@ void main() {
 
     final bigQuery = await schemaDb.db
         .customSelect(
-          "Select * from test1 o left join test2 t on o.reference = t.$schemaDataId",
+          "Select * from test1 o left join test2 t on o.reference = t.$dataId",
         )
         .get();
 
-    expect(bigQuery.first.data.length, 10);
+    expect(bigQuery.first.data.length, 13);
   });
 }

@@ -11,17 +11,37 @@ const Map<String, DriftSqlType> _typeLookup = {
   "blob": DriftSqlType.blob,
 };
 
-const String schemaDataId = "_schemaDataId";
+const String dataId = "_dataId";
+const String foreignSchema = "_foreignSchema";
+const String foreignDataId = "_foreignDataId";
+
+const List<String> addedSchemaColumns = [
+  dataId,
+  foreignSchema,
+  foreignDataId,
+];
 
 class SchemaTable {
   SchemaTable({
     required this.tableName,
     required this.schemaDb,
-    required Map<String, dynamic> schema,
+    required this.schema,
     Set<GeneratedColumn>? overridePrimaryKey,
   }) : columns = [
           GeneratedColumn(
-            schemaDataId,
+            dataId,
+            tableName,
+            true,
+            type: DriftSqlType.int,
+          ),
+          GeneratedColumn(
+            foreignSchema,
+            tableName,
+            true,
+            type: DriftSqlType.string,
+          ),
+          GeneratedColumn(
+            foreignDataId,
             tableName,
             true,
             type: DriftSqlType.int,
@@ -32,11 +52,16 @@ class SchemaTable {
     queryColumnNames = "";
     queryInsertPlaceholder = "";
 
-    for (int i = 0; i < columns.length; i++) {
-      queryColumnNames += columns[i].name;
+    final columnNames = columns.map((e) => e.name).toList();
+    columnNames.removeWhere((element) => references.containsKey(element));
+
+    for (int i = 0; i < columnNames.length; i++) {
+      final columnName = columnNames[i];
+
+      queryColumnNames += columnName;
       queryInsertPlaceholder += "?${i + 1}";
 
-      if (i != columns.length - 1) {
+      if (i != columnNames.length - 1) {
         queryColumnNames += ", ";
         queryInsertPlaceholder += ", ";
       }
@@ -50,15 +75,15 @@ class SchemaTable {
   }
 
   final String tableName;
-  final List<GeneratedColumn> columns;
   final SchemaDb schemaDb;
+  final Map<String, dynamic> schema;
+  final Map<String, String> references = {};
 
   late CustomTable driftTable;
 
+  final List<GeneratedColumn> columns;
   String queryColumnNames = "";
   String queryInsertPlaceholder = "";
-  final Map<String, String> references = {};
-  final Map<String, String> arrays = {};
 
   void build(Map<String, dynamic> data) {
     if (data["properties"] != null) {
@@ -99,7 +124,7 @@ class SchemaTable {
 
         if (type == "array") {
           final arrayTableName = "$tableName$type";
-          arrays[key] = arrayTableName;
+          ref = arrayTableName;
 
           final schemaTable = SchemaTable(
             tableName: arrayTableName,
@@ -143,35 +168,72 @@ class SchemaTable {
     required List<Map<String, dynamic>?> featureDatas,
   }) async {
     final cleanFeatureDatas = featureDatas.nonNulls.toList();
-    final List<Map<String, dynamic>?> refData = [];
 
-    for (final featureData in cleanFeatureDatas) {
+    final List<List<Variable>> variables = [];
+    final Map<int, Map<String, dynamic>> refData = {};
+
+    for (int i = 0; i < cleanFeatureDatas.length; i++) {
+      final featureData = cleanFeatureDatas[i];
       for (final entry in references.entries) {
-        refData.add(featureData[entry.key]);
+        refData.putIfAbsent(i, () => {})[entry.key] = featureData[entry.key];
+
+        featureData.remove(entry.key);
       }
+
+      final schemaColumns =
+          addedSchemaColumns.map((e) => featureData.remove(e));
+
+      final List<Variable> currentVariables = [];
+
+      currentVariables.addAll([
+        ...schemaColumns.map((e) => Variable(e)),
+        ...featureData.values.map((e) => Variable(e)),
+      ]);
+
+      variables.add(currentVariables);
     }
 
-    for (final entry in references.entries) {
-      final rowIds = await schemaDb.schemaTables[entry.value]!.insertData(
-        featureDatas: refData,
-      );
-
-      for (int i = 0; i < cleanFeatureDatas.length; i++) {
-        if (rowIds[i] != null) {
-          cleanFeatureDatas[i][entry.key] = rowIds[i];
+    int rowId = await () async {
+      late int firstInsert;
+      for (int i = 0; i < variables.length; i++) {
+        final int row = await schemaDb.db.customInsert(
+          'INSERT INTO $tableName ($queryColumnNames) VALUES ($queryInsertPlaceholder)',
+          variables: variables[i],
+        );
+        if (i == 0) {
+          firstInsert = row;
         }
       }
-    }
+      return firstInsert;
+    }();
 
-    int rowId = await schemaDb.db.customInsert(
-      'INSERT INTO $tableName ($queryColumnNames) VALUES ($queryInsertPlaceholder)',
-      variables: [
-        for (final featureData in cleanFeatureDatas) ...[
-          const Variable(null),
-          ...featureData.values.map((e) => Variable(e)),
-        ]
-      ],
-    );
+    for (int i = 0; i < cleanFeatureDatas.length; i++) {
+      final data = refData[i];
+
+      void parseData(
+        dynamic element,
+        List<Map<String, dynamic>?> parsedRefData,
+      ) {
+        if (element is List) {
+          for (final element in element) {
+            parseData(element, parsedRefData);
+          }
+        } else if (element is Map<String, dynamic>) {
+          element[foreignSchema] = tableName;
+          element[foreignDataId] = rowId + i;
+          parsedRefData.add(element);
+        } else {
+          parseData({"items": element}, parsedRefData);
+        }
+      }
+
+      data?.forEach((key, value) {
+        final List<Map<String, dynamic>?> parsedRefData = [];
+        parseData(value, parsedRefData);
+        schemaDb.schemaTables[references[key]]!
+            .insertData(featureDatas: parsedRefData);
+      });
+    }
 
     return List.generate(featureDatas.length, (index) {
       int? value;
@@ -188,13 +250,12 @@ class SchemaTable {
   ///Returns the expanded data for the feature at index
   Future<Map<String, dynamic>?> queryDataForIndex({
     required int rowIndex,
-    bool removeSchemaTableId = true,
+    bool removeSchemaColumns = true,
   }) async {
-    final featureData = (await schemaDb.db
-        .customSelect(
-          "Select * from $tableName where $schemaDataId = $rowIndex",
-        )
-        .get());
+    final featureData = (await schemaDb.db.customSelect(
+      "Select * from $tableName where $dataId = ?1",
+      variables: [Variable(rowIndex)],
+    ).get());
 
     if (featureData.isEmpty) {
       return null;
@@ -202,31 +263,65 @@ class SchemaTable {
 
     return expandData(
       featureData: featureData.first.data,
-      removeSchemaTableId: removeSchemaTableId,
+      removeSchemaColumns: removeSchemaColumns,
     );
   }
 
   ///Returns the feature with all its references filled in with the corresponding data
   Future<Map<String, dynamic>> expandData({
     required Map<String, dynamic> featureData,
-    bool removeSchemaTableId = true,
+    bool removeSchemaColumns = true,
   }) async {
-    for (final entry in references.entries) {
-      final refIndex = featureData[entry.key];
-      if (refIndex != null) {
-        final refData =
-            await schemaDb.schemaTables[entry.value]!.queryDataForIndex(
-          rowIndex: refIndex,
-        );
+    final currentDataId = featureData[dataId];
 
-        featureData[entry.key] = refData;
-      }
+    for (final entry in references.entries) {
+      final refData =
+          await schemaDb.schemaTables[entry.value]!.queryDataForReference(
+        fDataId: currentDataId,
+        fSchema: tableName,
+        removeSchemaColumns: removeSchemaColumns,
+      );
+
+      featureData[entry.key] = refData;
     }
 
-    if (removeSchemaTableId) {
-      featureData.remove(schemaDataId);
+    if (removeSchemaColumns) {
+      featureData.removeWhere((key, value) => addedSchemaColumns.contains(key));
     }
 
     return featureData;
+  }
+
+  ///Returns the data for a given reference
+  Future<dynamic> queryDataForReference({
+    required int fDataId,
+    required String fSchema,
+    bool removeSchemaColumns = true,
+  }) async {
+    final featureData = (await schemaDb.db.customSelect(
+      "Select * from $tableName where $foreignDataId = ?1 and $foreignSchema = ?2",
+      variables: [
+        Variable(fDataId),
+        Variable(fSchema),
+      ],
+    ).get());
+
+    if (featureData.isEmpty) {
+      return null;
+    } else if (featureData.length == 1) {
+      return expandData(
+        featureData: featureData.first.data,
+        removeSchemaColumns: removeSchemaColumns,
+      );
+    } else {
+      final futures = featureData
+          .map((e) => expandData(
+                featureData: e.data,
+                removeSchemaColumns: removeSchemaColumns,
+              ))
+          .toList();
+
+      return (await Future.wait(futures)).map((e) => e["items"]);
+    }
   }
 }

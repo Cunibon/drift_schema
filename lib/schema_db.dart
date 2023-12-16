@@ -46,12 +46,12 @@ class SchemaDb {
     return db;
   }
 
-  Future<int> insertData({
-    required Map<String, dynamic> featureData,
+  Future<List<int?>> insertData({
+    required List<Map<String, dynamic>> featureDatas,
     required String schemaName,
   }) async {
     return schemaTables[schemaName]!.insertData(
-      featureData: featureData,
+      featureDatas: featureDatas,
     );
   }
 
