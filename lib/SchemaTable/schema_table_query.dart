@@ -1,5 +1,5 @@
 import 'package:drift/drift.dart';
-import 'package:drift_schema/schema_table.dart';
+import 'package:drift_schema/SchemaTable/schema_table.dart';
 
 extension QueryTable on SchemaTable {
   ///Returns the expanded data for the feature at index

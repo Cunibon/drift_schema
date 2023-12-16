@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart';
-import 'package:drift_schema/custom_table.dart';
+import 'package:drift_schema/CustomDrift/custom_table.dart';
+import 'package:drift_schema/SchemaTable/schema_table_creation.dart';
 import 'package:drift_schema/schema_db.dart';
-import 'package:drift_schema/schema_table_creation.dart';
 
 const String dataId = "_dataId";
 const String foreignSchema = "_foreignSchema";

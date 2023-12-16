@@ -1,10 +1,10 @@
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
-import 'package:drift_schema/custom_db.dart';
-import 'package:drift_schema/custom_table.dart';
-import 'package:drift_schema/schema_table.dart';
-import 'package:drift_schema/schema_table_insert.dart';
-import 'package:drift_schema/schema_table_query.dart';
+import 'package:drift_schema/CustomDrift/custom_db.dart';
+import 'package:drift_schema/CustomDrift/custom_table.dart';
+import 'package:drift_schema/SchemaTable/schema_table.dart';
+import 'package:drift_schema/SchemaTable/schema_table_insert.dart';
+import 'package:drift_schema/SchemaTable/schema_table_query.dart';
 
 class SchemaDb {
   SchemaDb(this.schemas);

@@ -1,7 +1,7 @@
 import 'dart:convert';
 
+import 'package:drift_schema/SchemaTable/schema_table.dart';
 import 'package:drift_schema/schema_db.dart';
-import 'package:drift_schema/schema_table.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';

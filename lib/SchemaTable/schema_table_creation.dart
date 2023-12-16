@@ -1,5 +1,5 @@
 import 'package:drift/drift.dart';
-import 'package:drift_schema/schema_table.dart';
+import 'package:drift_schema/SchemaTable/schema_table.dart';
 
 const Map<String, DriftSqlType> _typeLookup = {
   "boolean": DriftSqlType.bool,
