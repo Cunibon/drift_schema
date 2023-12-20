@@ -6,6 +6,9 @@
         "number2": 123,
         "dateTime": "2023-12-10T08:30:00Z"
     },
+    "fakeRef":{
+        "string2": "Should not make it to database"
+    },
     "arrayProperty": ["so","many","strings"],
     "allOfString1": "This is a string",
     "allOfString2": "Another string",

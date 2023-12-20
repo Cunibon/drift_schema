@@ -32,7 +32,7 @@ void main() {
     return schemaDb;
   }
 
-  test('Test custom DB creation based on schema', () async {
+  test('Test: custom DB creation based on schema', () async {
     final schemaDb = await setUpTestDb();
 
     expect(schemaDb.db.allTables.length, 2);
@@ -40,7 +40,7 @@ void main() {
     expect(schemaDb.db.allTables[1].$columns.length, 4);
   });
 
-  test('Test insert and query data from SchemaDB', () async {
+  test('Test: insert and query data from SchemaDB', () async {
     final schemaDb = await setUpTestDb();
 
     final String featureString = await rootBundle.loadString(
@@ -68,5 +68,41 @@ void main() {
         .get();
 
     expect(bigQuery.first.data.length, 13);
+  });
+
+  test('Test: transaction', () async {
+    final jsonLookup = {
+      "ParentTable": {
+        "ParentID": {"type": "number"}
+      },
+      "ChildTable": {
+        "ChildID": {"type": "number"},
+        "ParentID": {"type": "number"}
+      },
+    };
+
+    final schemaDb = SchemaDb(jsonLookup);
+
+    await schemaDb.init();
+
+    try {
+      final result = await schemaDb.db.transaction(() async {
+        await schemaDb.db
+            .customStatement("INSERT INTO ParentTable (ParentID) VALUES (1)");
+        await schemaDb.db.customStatement(
+            "INSERT INTO ChildTable (ChildID, ParentID) VALUES (1, 1)");
+
+        return "test";
+      });
+      print(result);
+    } catch (e) {
+      print(e);
+    }
+    final data = await schemaDb.queryDataForIndex(
+      rowIndex: 1,
+      schemaName: "ParentTable",
+    );
+
+    print(data);
   });
 }

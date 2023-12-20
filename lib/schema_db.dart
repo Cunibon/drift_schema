@@ -52,9 +52,14 @@ class SchemaDb {
     required List<Map<String, dynamic>> featureDatas,
     required String schemaName,
   }) async {
-    return schemaTables[schemaName]!.insertData(
-      featureDatas: featureDatas,
-    );
+    try {
+      return await schemaTables[schemaName]!.insertData(
+        featureDatas: featureDatas,
+      );
+    } catch (e) {
+      print(e);
+      return [];
+    }
   }
 
   Future<Map<String, dynamic>?> queryDataForIndex({

@@ -35,47 +35,51 @@ extension InsertTable on SchemaTable {
       variables.add(currentVariables);
     }
 
-    int rowId = await () async {
-      late int firstInsert;
-      for (int i = 0; i < variables.length; i++) {
-        final int row = await schemaDb.db.customInsert(
-          'INSERT INTO $tableName ($queryColumnNames) VALUES ($queryInsertPlaceholder)',
-          variables: variables[i],
-        );
-        if (i == 0) {
-          firstInsert = row;
-        }
-      }
-      return firstInsert;
-    }();
-
-    for (int i = 0; i < cleanFeatureDatas.length; i++) {
-      final data = refData[i];
-
-      void parseData(
-        dynamic element,
-        List<Map<String, dynamic>?> parsedRefData,
-      ) {
-        if (element is List) {
-          for (final element in element) {
-            parseData(element, parsedRefData);
+    int rowId = await schemaDb.db.transaction<int>(() async {
+      int rowId = await () async {
+        late int firstInsert;
+        for (int i = 0; i < variables.length; i++) {
+          final int row = await schemaDb.db.customInsert(
+            'INSERT INTO $tableName ($queryColumnNames) VALUES ($queryInsertPlaceholder)',
+            variables: variables[i],
+          );
+          if (i == 0) {
+            firstInsert = row;
           }
-        } else if (element is Map<String, dynamic>) {
-          element[foreignSchema] = tableName;
-          element[foreignDataId] = rowId + i;
-          parsedRefData.add(element);
-        } else {
-          parseData({"items": element}, parsedRefData);
         }
+        return firstInsert;
+      }();
+
+      for (int i = 0; i < cleanFeatureDatas.length; i++) {
+        final data = refData[i];
+
+        void parseData(
+          dynamic element,
+          List<Map<String, dynamic>?> parsedRefData,
+        ) {
+          if (element is List) {
+            for (final element in element) {
+              parseData(element, parsedRefData);
+            }
+          } else if (element is Map<String, dynamic>) {
+            element[foreignSchema] = tableName;
+            element[foreignDataId] = rowId + i;
+            parsedRefData.add(element);
+          } else {
+            parseData({"items": element}, parsedRefData);
+          }
+        }
+
+        data?.forEach((key, value) {
+          final List<Map<String, dynamic>?> parsedRefData = [];
+          parseData(value, parsedRefData);
+          schemaDb.schemaTables[references[key]]!
+              .insertData(featureDatas: parsedRefData);
+        });
       }
 
-      data?.forEach((key, value) {
-        final List<Map<String, dynamic>?> parsedRefData = [];
-        parseData(value, parsedRefData);
-        schemaDb.schemaTables[references[key]]!
-            .insertData(featureDatas: parsedRefData);
-      });
-    }
+      return rowId;
+    });
 
     return List.generate(featureDatas.length, (index) {
       int? value;

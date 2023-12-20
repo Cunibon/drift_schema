@@ -11,6 +11,10 @@
             "$ref": "test2",
             "type": "string"
         },
+        "fakeRef": {
+            "$ref": "fake",
+            "type": "string"
+        },
         "arrayProperty": {
             "type": "array",
             "items": {
