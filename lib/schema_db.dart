@@ -48,17 +48,18 @@ class SchemaDb {
     return db;
   }
 
-  Future<List<int?>> insertData({
+  Future<int> insertData({
     required List<Map<String, dynamic>> featureDatas,
     required String schemaName,
   }) async {
     try {
-      return await schemaTables[schemaName]!.insertData(
-        featureDatas: featureDatas,
+      return await db.transaction(
+        () async => await schemaTables[schemaName]!.insertData(
+          featureDatas: featureDatas,
+        ),
       );
     } catch (e) {
-      print(e);
-      return [];
+      return 0;
     }
   }
 

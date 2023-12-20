@@ -19,6 +19,7 @@ class SchemaTable {
     required this.schemaDb,
     required this.schema,
     Set<GeneratedColumn>? overridePrimaryKey,
+    this.isArray = false,
   }) : columns = [
           GeneratedColumn(
             dataId,
@@ -70,6 +71,7 @@ class SchemaTable {
   final SchemaDb schemaDb;
   final Map<String, dynamic> schema;
   final Map<String, String> references = {};
+  final bool isArray;
 
   late CustomTable driftTable;
 

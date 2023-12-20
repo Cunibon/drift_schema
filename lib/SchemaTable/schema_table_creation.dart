@@ -56,6 +56,7 @@ extension CreateTable on SchemaTable {
             tableName: arrayTableName,
             schema: (value as Map<String, dynamic>)..remove("type"),
             schemaDb: schemaDb,
+            isArray: true,
           );
           schemaDb.addSchemaTable(
             schemaTable,

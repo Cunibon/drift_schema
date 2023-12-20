@@ -63,12 +63,7 @@ extension QueryTable on SchemaTable {
 
     if (featureData.isEmpty) {
       return null;
-    } else if (featureData.length == 1) {
-      return expandData(
-        featureData: featureData.first.data,
-        removeSchemaColumns: removeSchemaColumns,
-      );
-    } else {
+    } else if (isArray) {
       final futures = featureData
           .map((e) => expandData(
                 featureData: e.data,
@@ -77,6 +72,11 @@ extension QueryTable on SchemaTable {
           .toList();
 
       return (await Future.wait(futures)).map((e) => e["items"]);
+    } else {
+      return expandData(
+        featureData: featureData.first.data,
+        removeSchemaColumns: removeSchemaColumns,
+      );
     }
   }
 }
