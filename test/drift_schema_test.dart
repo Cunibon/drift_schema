@@ -93,7 +93,7 @@ void main() {
     expect(bigQuery.first.data.length, 13);
   });
 
-  test('Test: transaction data safety', () async {
+  test('Test: data is not commited when table is missing', () async {
     test1Json["fakeRef"] = {"\$ref": "fake", "type": "string"};
 
     final jsonLookup = {
@@ -112,12 +112,14 @@ void main() {
       schemaName: "test1",
     );
 
-    final query = await schemaDb.db
-        .customSelect(
-          "Select * from test1 o left join test2 t on o.reference = t.$dataId",
-        )
-        .get();
+    for (final table in schemaDb.schemaTables.keys) {
+      final query = await schemaDb.db
+          .customSelect(
+            "Select * from $table",
+          )
+          .get();
 
-    expect(query.isEmpty, true);
+      expect(query.isEmpty, true);
+    }
   });
 }
