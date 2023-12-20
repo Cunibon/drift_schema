@@ -94,8 +94,10 @@ void main() {
   });
 
   test('Test: transaction data safety', () async {
+    test1Json["fakeRef"] = {"\$ref": "fake", "type": "string"};
+
     final jsonLookup = {
-      "test1": test1Json..["fakeRef"] = {"\$ref": "fake", "type": "string"},
+      "test1": test1Json,
       "test2": test2Json,
     };
 
